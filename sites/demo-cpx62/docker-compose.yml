@@ -1,12 +1,11 @@
 # CPX62: 16 vCPU, 32GB RAM, 640GB SSD
 services:
   wordpress:
-    image: wordpress:php8.3-fpm-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.wordpress
     volumes:
       - wordpress-files:/var/www/html
-    configs:
-      - source: php_config
-        target: /usr/local/etc/php/conf.d/custom.ini
     environment:
       - WORDPRESS_DB_HOST=mariadb
       - WORDPRESS_DB_USER=$SERVICE_USER_WORDPRESS
@@ -44,7 +43,9 @@ services:
       start_period: 30s
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.demo-cpx62.rule=Host(`demo-cpx62.hellowp.cloud`)"
@@ -55,9 +56,6 @@ services:
     volumes:
       - wordpress-files:/var/www/html:ro
       - nginx-cache:/var/cache/nginx
-    configs:
-      - source: nginx_config
-        target: /etc/nginx/nginx.conf
     deploy:
       resources:
         limits:
@@ -140,9 +138,3 @@ volumes:
   mariadb-data:
   redis-data:
   nginx-cache:
-
-configs:
-  nginx_config:
-    file: ./nginx.conf
-  php_config:
-    file: ./php-custom.ini
