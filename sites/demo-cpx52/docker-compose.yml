@@ -1,18 +1,19 @@
+# CPX52: 12 vCPU, 24GB RAM, 480GB SSD
 services:
   wordpress:
     image: wordpress:php8.3-fpm-alpine
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.demo-cpx21-wordpress.rule=Host(`demo-cpx21.hellowp.cloud`)"
-      - "traefik.http.routers.demo-cpx21-wordpress.entrypoints=https"
-      - "traefik.http.routers.demo-cpx21-wordpress.tls=true"
-      - "traefik.http.routers.demo-cpx21-wordpress.tls.certresolver=letsencrypt"
-      - "traefik.http.services.demo-cpx21-wordpress.loadbalancer.server.port=80"
+      - "traefik.http.routers.demo-cpx52-wordpress.rule=Host(`demo-cpx52.hellowp.cloud`)"
+      - "traefik.http.routers.demo-cpx52-wordpress.entrypoints=https"
+      - "traefik.http.routers.demo-cpx52-wordpress.tls=true"
+      - "traefik.http.routers.demo-cpx52-wordpress.tls.certresolver=letsencrypt"
+      - "traefik.http.services.demo-cpx52-wordpress.loadbalancer.server.port=80"
     volumes:
       - wordpress-files:/var/www/html
       - ./php-custom.ini:/usr/local/etc/php/conf.d/custom.ini:ro
     environment:
-      - SERVICE_FQDN_WORDPRESS=https://demo-cpx21.hellowp.cloud
+      - SERVICE_FQDN_WORDPRESS=https://demo-cpx52.hellowp.cloud
       - WORDPRESS_DB_HOST=mariadb
       - WORDPRESS_DB_USER=$SERVICE_USER_WORDPRESS
       - WORDPRESS_DB_PASSWORD=$SERVICE_PASSWORD_WORDPRESS
@@ -22,8 +23,8 @@ services:
           define('WP_REDIS_PORT', 6379);
           define('WP_REDIS_DATABASE', 0);
           define('WP_CACHE', true);
-          define('WP_MEMORY_LIMIT', '256M');
-          define('WP_MAX_MEMORY_LIMIT', '512M');
+          define('WP_MEMORY_LIMIT', '1024M');
+          define('WP_MAX_MEMORY_LIMIT', '2048M');
           define('DISABLE_WP_CRON', false);
           define('WP_POST_REVISIONS', 5);
           define('AUTOSAVE_INTERVAL', 120);
@@ -31,11 +32,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '4.0'
+          memory: 2G
         reservations:
-          cpus: '0.25'
-          memory: 256M
+          cpus: '2.0'
+          memory: 1G
     depends_on:
       mariadb:
         condition: service_healthy
@@ -51,22 +52,22 @@ services:
     image: nginx:alpine
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.demo-cpx21-nginx.rule=Host(`demo-cpx21.hellowp.cloud`)"
-      - "traefik.http.routers.demo-cpx21-nginx.entrypoints=https"
-      - "traefik.http.routers.demo-cpx21-nginx.tls=true"
-      - "traefik.http.routers.demo-cpx21-nginx.tls.certresolver=letsencrypt"
-      - "traefik.http.services.demo-cpx21-nginx.loadbalancer.server.port=80"
+      - "traefik.http.routers.demo-cpx52-nginx.rule=Host(`demo-cpx52.hellowp.cloud`)"
+      - "traefik.http.routers.demo-cpx52-nginx.entrypoints=https"
+      - "traefik.http.routers.demo-cpx52-nginx.tls=true"
+      - "traefik.http.routers.demo-cpx52-nginx.tls.certresolver=letsencrypt"
+      - "traefik.http.services.demo-cpx52-nginx.loadbalancer.server.port=80"
     volumes:
       - wordpress-files:/var/www/html:ro
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 128M
+          cpus: '2.0'
+          memory: 512M
         reservations:
-          cpus: '0.1'
-          memory: 64M
+          cpus: '1.0'
+          memory: 256M
     depends_on:
       - wordpress
     healthcheck:
@@ -87,26 +88,28 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --innodb-buffer-pool-size=512M
-      - --innodb-log-file-size=128M
+      - --innodb-buffer-pool-size=8G
+      - --innodb-buffer-pool-instances=8
+      - --innodb-log-file-size=512M
       - --innodb-flush-log-at-trx-commit=2
       - --innodb-flush-method=O_DIRECT
+      - --innodb-io-capacity=3000
       - --skip-name-resolve
-      - --max-connections=150
+      - --max-connections=300
       - --query-cache-type=1
-      - --query-cache-size=64M
-      - --tmp-table-size=64M
-      - --max-heap-table-size=64M
-      - --join-buffer-size=4M
-      - --sort-buffer-size=4M
+      - --query-cache-size=192M
+      - --tmp-table-size=192M
+      - --max-heap-table-size=192M
+      - --join-buffer-size=12M
+      - --sort-buffer-size=12M
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '4.0'
+          memory: 10G
         reservations:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '2.0'
+          memory: 6G
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -115,17 +118,17 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly no --save ""
+    command: redis-server --maxmemory 768mb --maxmemory-policy allkeys-lru --appendonly no --save ""
     volumes:
       - redis-data:/data
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 256M
+          cpus: '2.0'
+          memory: 1G
         reservations:
-          cpus: '0.1'
-          memory: 128M
+          cpus: '1.0'
+          memory: 512M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
