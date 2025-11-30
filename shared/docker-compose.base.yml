@@ -1,0 +1,144 @@
+# Base Docker Compose template for WordPress sites
+# Copy this to sites/YOUR-SITE/ and customize:
+# 1. Replace SITENAME with your site identifier (e.g., demo-cpx21)
+# 2. Replace DOMAIN with your domain (e.g., demo-cpx21.hellowp.cloud)
+# 3. Adjust resource limits as needed
+
+services:
+  wordpress:
+    image: wordpress:php8.3-fpm-alpine
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.SITENAME-wordpress.rule=Host(`DOMAIN`)"
+      - "traefik.http.routers.SITENAME-wordpress.entrypoints=https"
+      - "traefik.http.routers.SITENAME-wordpress.tls=true"
+      - "traefik.http.routers.SITENAME-wordpress.tls.certresolver=letsencrypt"
+      - "traefik.http.services.SITENAME-wordpress.loadbalancer.server.port=80"
+    volumes:
+      - wordpress-files:/var/www/html
+      - ./php-custom.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+    environment:
+      - SERVICE_FQDN_WORDPRESS=https://DOMAIN
+      - WORDPRESS_DB_HOST=mariadb
+      - WORDPRESS_DB_USER=$SERVICE_USER_WORDPRESS
+      - WORDPRESS_DB_PASSWORD=$SERVICE_PASSWORD_WORDPRESS
+      - WORDPRESS_DB_NAME=wordpress
+      - WORDPRESS_CONFIG_EXTRA=
+          define('WP_REDIS_HOST', 'redis');
+          define('WP_REDIS_PORT', 6379);
+          define('WP_REDIS_DATABASE', 0);
+          define('WP_CACHE', true);
+          define('WP_MEMORY_LIMIT', '256M');
+          define('WP_MAX_MEMORY_LIMIT', '512M');
+          define('DISABLE_WP_CRON', false);
+          define('WP_POST_REVISIONS', 5);
+          define('AUTOSAVE_INTERVAL', 120);
+          define('EMPTY_TRASH_DAYS', 14);
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php-fpm-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:alpine
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.SITENAME-nginx.rule=Host(`DOMAIN`)"
+      - "traefik.http.routers.SITENAME-nginx.entrypoints=https"
+      - "traefik.http.routers.SITENAME-nginx.tls=true"
+      - "traefik.http.routers.SITENAME-nginx.tls.certresolver=letsencrypt"
+      - "traefik.http.services.SITENAME-nginx.loadbalancer.server.port=80"
+    volumes:
+      - wordpress-files:/var/www/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    depends_on:
+      - wordpress
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mariadb:
+    image: mariadb:11.4
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=$SERVICE_PASSWORD_ROOT
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=$SERVICE_USER_WORDPRESS
+      - MYSQL_PASSWORD=$SERVICE_PASSWORD_WORDPRESS
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=512M
+      - --innodb-log-file-size=128M
+      - --innodb-flush-log-at-trx-commit=2
+      - --innodb-flush-method=O_DIRECT
+      - --skip-name-resolve
+      - --max-connections=150
+      - --query-cache-type=1
+      - --query-cache-size=64M
+      - --tmp-table-size=64M
+      - --max-heap-table-size=64M
+      - --join-buffer-size=4M
+      - --sort-buffer-size=4M
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly no --save ""
+    volumes:
+      - redis-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  wordpress-files:
+  mariadb-data:
+  redis-data:
