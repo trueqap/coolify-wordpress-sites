@@ -131,22 +131,28 @@ services:
       timeout: 5s
       retries: 5
 
-  sftp:
-    image: atmoz/sftp:alpine
+  ssh:
+    image: lscr.io/linuxserver/openssh-server:latest
     ports:
-      - "2222:22"
+      - "2222:2222"
     volumes:
-      - wordpress-files:/home/sftpuser/wordpress
+      - wordpress-files:/wordpress
     environment:
-      - SFTP_USERS=sftpuser:${SFTP_PASSWORD:-changeme}:1000:1000
+      - PUID=33
+      - PGID=33
+      - TZ=Europe/Budapest
+      - USER_NAME=sftpuser
+      - USER_PASSWORD=${SFTP_PASSWORD:-changeme}
+      - PASSWORD_ACCESS=true
+      - SUDO_ACCESS=false
     deploy:
       resources:
         limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
           cpus: '0.1'
           memory: 64M
-        reservations:
-          cpus: '0.05'
-          memory: 32M
     healthcheck:
       test: ["CMD-SHELL", "pgrep sshd > /dev/null || exit 1"]
       interval: 30s
