@@ -131,6 +131,28 @@ services:
       timeout: 5s
       retries: 5
 
+  sftp:
+    image: atmoz/sftp:alpine
+    ports:
+      - "2222:22"
+    volumes:
+      - wordpress-files:/home/${SFTP_USER:-sftpuser}/wordpress
+    environment:
+      - SFTP_USERS=${SFTP_USER:-sftpuser}:${SFTP_PASSWORD:-changeme}:1000:1000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep sshd > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   wordpress-files:
   mariadb-data:
