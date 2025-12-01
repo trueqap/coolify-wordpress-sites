@@ -157,6 +157,9 @@ services:
 
   phpmyadmin:
     image: phpmyadmin:5-apache
+    networks:
+      - default
+      - coolify
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.pma-demo-cpx22.rule=Host(`pma-demo-cpx22.hellowp.cloud`)"
@@ -186,6 +189,10 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+networks:
+  coolify:
+    external: true
 
 volumes:
   wordpress-files:
