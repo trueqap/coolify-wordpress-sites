@@ -132,19 +132,13 @@ services:
       retries: 5
 
   ssh:
-    image: lscr.io/linuxserver/openssh-server:latest
+    image: trueqap/wordpress-ssh:latest
     ports:
       - "2222:2222"
     volumes:
-      - wordpress-files:/wordpress
+      - wordpress-files:/chroot/wordpress
     environment:
-      - PUID=33
-      - PGID=33
-      - TZ=Europe/Budapest
-      - USER_NAME=sftpuser
-      - USER_PASSWORD=${SFTP_PASSWORD:-changeme}
-      - PASSWORD_ACCESS=true
-      - SUDO_ACCESS=false
+      - SFTP_PASSWORD=${SFTP_PASSWORD:-changeme}
     deploy:
       resources:
         limits:
