@@ -136,9 +136,9 @@ services:
     ports:
       - "2222:22"
     volumes:
-      - wordpress-files:/home/${SFTP_USER:-sftpuser}/wordpress
+      - wordpress-files:/home/sftpuser/wordpress
     environment:
-      - SFTP_USERS=${SFTP_USER:-sftpuser}:${SFTP_PASSWORD:-changeme}:1000:1000
+      - SFTP_USERS=sftpuser:${SFTP_PASSWORD:-changeme}:1000:1000
     deploy:
       resources:
         limits:
