@@ -155,6 +155,38 @@ services:
       timeout: 5s
       retries: 3
 
+  phpmyadmin:
+    image: phpmyadmin:5-apache
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pma-demo-cpx22.rule=Host(`pma-demo-cpx22.hellowp.cloud`)"
+      - "traefik.http.routers.pma-demo-cpx22.entrypoints=https"
+      - "traefik.http.routers.pma-demo-cpx22.tls=true"
+      - "traefik.http.routers.pma-demo-cpx22.tls.certresolver=letsencrypt"
+      - "traefik.http.services.pma-demo-cpx22.loadbalancer.server.port=80"
+    environment:
+      - PMA_HOST=mariadb
+      - PMA_USER=$SERVICE_USER_WORDPRESS
+      - PMA_PASSWORD=$SERVICE_PASSWORD_WORDPRESS
+      - UPLOAD_LIMIT=64M
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 volumes:
   wordpress-files:
   mariadb-data:
