@@ -155,35 +155,34 @@ services:
       timeout: 5s
       retries: 3
 
-  phpmyadmin:
-    image: phpmyadmin:5-apache
+  adminer:
+    image: adminer:4-standalone
     networks:
       - default
       - coolify
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pma-demo-cpx22.rule=Host(`pma-demo-cpx22.hellowp.cloud`)"
-      - "traefik.http.routers.pma-demo-cpx22.entrypoints=https"
-      - "traefik.http.routers.pma-demo-cpx22.tls=true"
-      - "traefik.http.routers.pma-demo-cpx22.tls.certresolver=letsencrypt"
-      - "traefik.http.services.pma-demo-cpx22.loadbalancer.server.port=80"
+      - "traefik.http.routers.db-demo-cpx22.rule=Host(`db-demo-cpx22.hellowp.cloud`)"
+      - "traefik.http.routers.db-demo-cpx22.entrypoints=https"
+      - "traefik.http.routers.db-demo-cpx22.tls=true"
+      - "traefik.http.routers.db-demo-cpx22.tls.certresolver=letsencrypt"
+      - "traefik.http.services.db-demo-cpx22.loadbalancer.server.port=8080"
     environment:
-      - PMA_HOST=mariadb
-      - PMA_ARBITRARY=0
-      - UPLOAD_LIMIT=64M
+      - ADMINER_DEFAULT_SERVER=mariadb
+      - ADMINER_DESIGN=nette
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 128M
-        reservations:
-          cpus: '0.1'
+          cpus: '0.15'
           memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
     depends_on:
       mariadb:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost/ || exit 1"]
+      test: ["CMD-SHELL", "php -r 'exit(0);'"]
       interval: 30s
       timeout: 5s
       retries: 3
