@@ -2,9 +2,11 @@
 	# Enable FrankenPHP
 	frankenphp
 	order php_server before file_server
+	# Disable auto HTTPS - Traefik handles TLS
+	auto_https off
 }
 
-demo-xpc82.hellowp.cloud {
+:80 {
 	root * /app/public
 	encode zstd gzip
 	php_server
