@@ -1,13 +1,15 @@
-# CPX62: 16 vCPU, 32GB RAM, 640GB SSD
-# Optimized for WordPress + WPBenchmark performance
+# CPX82: FrankenPHP High Performance WooCommerce
 services:
   wordpress:
     build:
       context: .
-      dockerfile: Dockerfile.wordpress
+      dockerfile: Dockerfile
     volumes:
-      - wordpress-files:/var/www/html
+      - wordpress-files:/app/public
+      - caddy-data:/data
+      - caddy-config:/config
     environment:
+      - SERVER_NAME=demo-xpc82.hellowp.cloud
       - WORDPRESS_DB_HOST=mariadb
       - WORDPRESS_DB_USER=$SERVICE_USER_WORDPRESS
       - WORDPRESS_DB_PASSWORD=$SERVICE_PASSWORD_WORDPRESS
@@ -19,7 +21,7 @@ services:
           define('WP_REDIS_TIMEOUT', 1);
           define('WP_REDIS_READ_TIMEOUT', 1);
           define('WP_CACHE', true);
-          define('WP_MEMORY_LIMIT', '512M');
+          define('WP_MEMORY_LIMIT', '1024M');
           define('WP_MAX_MEMORY_LIMIT', '1024M');
           define('DISABLE_WP_CRON', false);
           define('WP_POST_REVISIONS', 5);
@@ -28,6 +30,13 @@ services:
           define('CONCATENATE_SCRIPTS', false);
           define('COMPRESS_SCRIPTS', true);
           define('COMPRESS_CSS', true);
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.demo-xpc82.rule=Host(`demo-xpc82.hellowp.cloud`)"
+      - "traefik.http.routers.demo-xpc82.entrypoints=https"
+      - "traefik.http.routers.demo-xpc82.tls=true"
+      - "traefik.http.routers.demo-xpc82.tls.certresolver=letsencrypt"
+      - "traefik.http.services.demo-xpc82.loadbalancer.server.port=80"
     deploy:
       resources:
         limits:
@@ -42,47 +51,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pgrep php-fpm > /dev/null || exit 1"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/index.php"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-
-  nginx:
-    build:
-      context: .
-      dockerfile: Dockerfile.nginx
-    networks:
-      - default
-      - coolify
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.demo-cpx62.rule=Host(`demo-cpx62.hellowp.cloud`)"
-      - "traefik.http.routers.demo-cpx62.entrypoints=https"
-      - "traefik.http.routers.demo-cpx62.tls=true"
-      - "traefik.http.routers.demo-cpx62.tls.certresolver=letsencrypt"
-      - "traefik.http.services.demo-cpx62.loadbalancer.server.port=80"
-    volumes:
-      - wordpress-files:/var/www/html:ro
-      - nginx-cache:/var/cache/nginx
-      - nginx-logs:/var/log/nginx
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 512M
-        reservations:
-          cpus: '1.0'
-          memory: 256M
-    depends_on:
-      wordpress:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/nginx-health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
   mariadb:
     image: mariadb:11.4
@@ -97,22 +70,27 @@ services:
       # Character set
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      # InnoDB Buffer Pool - 50-70% of available RAM for DB
+      # InnoDB Buffer Pool - ~60-70% of available RAM (Assuming 32GB total, allocating ~14-16GB to DB)
       - --innodb-buffer-pool-size=14G
-      # InnoDB Log settings (MariaDB 11.4 compatible)
-      - --innodb-log-file-size=2G
+      - --innodb-buffer-pool-instances=14
+      # InnoDB Log settings
+      - --innodb-log-file-size=4G
       - --innodb-log-buffer-size=256M
+      - --innodb-redo-log-capacity=8G
       # InnoDB Performance
       - --innodb-flush-log-at-trx-commit=2
       - --innodb-flush-method=O_DIRECT
       - --innodb-doublewrite=0
-      - --innodb-io-capacity=4000
-      - --innodb-io-capacity-max=8000
+      - --innodb-io-capacity=2000
+      - --innodb-io-capacity-max=4000
       - --innodb-read-io-threads=8
       - --innodb-write-io-threads=8
       - --innodb-lru-scan-depth=256
+      - --innodb-page-cleaners=8
       - --innodb-purge-threads=4
+      - --innodb-change-buffering=none
       - --innodb-adaptive-hash-index=ON
+      - --innodb-file-per-table=1
       # Connection settings
       - --skip-name-resolve
       - --max-connections=500
@@ -120,6 +98,11 @@ services:
       - --table-open-cache=8192
       - --table-definition-cache=4096
       - --open-files-limit=65535
+      # Query cache (Enabled for MariaDB 11.4)
+      - --query-cache-type=1
+      - --query-cache-size=64M
+      - --query-cache-limit=2M
+      - --query-cache-min-res-unit=512
       # Temp tables
       - --tmp-table-size=256M
       - --max-heap-table-size=256M
@@ -128,10 +111,10 @@ services:
       - --sort-buffer-size=8M
       - --read-buffer-size=2M
       - --read-rnd-buffer-size=4M
-      # Binary log (minimal for non-replication)
+      # Binary log
       - --sync-binlog=0
       - --binlog-expire-logs-seconds=86400
-      # Performance schema (disable for max performance)
+      # Performance schema
       - --performance-schema=OFF
     deploy:
       resources:
@@ -182,10 +165,9 @@ services:
   ssh:
     image: trueqap/wordpress-ssh:v2.1.1-acl
     ports:
-      - "2222:2222"
+      - "2223:2222"
     volumes:
       - wordpress-files:/wordpress
-      - nginx-logs:/logs:ro
     environment:
       - SFTP_PASSWORD=${SFTP_PASSWORD:-changeme}
     deploy:
@@ -209,11 +191,11 @@ services:
       - coolify
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.db-demo-cpx62.rule=Host(`db-demo-cpx62.hellowp.cloud`)"
-      - "traefik.http.routers.db-demo-cpx62.entrypoints=https"
-      - "traefik.http.routers.db-demo-cpx62.tls=true"
-      - "traefik.http.routers.db-demo-cpx62.tls.certresolver=letsencrypt"
-      - "traefik.http.services.db-demo-cpx62.loadbalancer.server.port=8080"
+      - "traefik.http.routers.db-demo-xpc82.rule=Host(`db-demo-xpc82.hellowp.cloud`)"
+      - "traefik.http.routers.db-demo-xpc82.entrypoints=https"
+      - "traefik.http.routers.db-demo-xpc82.tls=true"
+      - "traefik.http.routers.db-demo-xpc82.tls.certresolver=letsencrypt"
+      - "traefik.http.services.db-demo-xpc82.loadbalancer.server.port=8080"
     environment:
       - ADMINER_DEFAULT_SERVER=mariadb
       - ADMINER_DESIGN=nette
@@ -243,5 +225,5 @@ volumes:
   wordpress-files:
   mariadb-data:
   redis-data:
-  nginx-cache:
-  nginx-logs:
+  caddy-data:
+  caddy-config:

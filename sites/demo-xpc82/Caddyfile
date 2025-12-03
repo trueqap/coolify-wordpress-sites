@@ -1,0 +1,12 @@
+{
+	# Enable FrankenPHP
+	frankenphp
+	order php_server before file_server
+}
+
+demo-xpc82.hellowp.cloud {
+	root * /app/public
+	encode zstd gzip
+	php_server
+	file_server
+}
