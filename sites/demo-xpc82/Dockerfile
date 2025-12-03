@@ -24,5 +24,10 @@ RUN curl -o wordpress.tar.gz -fL "https://wordpress.org/wordpress-${WORDPRESS_VE
 # Copy Configs
 COPY Caddyfile /etc/frankenphp/Caddyfile
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 WORKDIR /app/public
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
