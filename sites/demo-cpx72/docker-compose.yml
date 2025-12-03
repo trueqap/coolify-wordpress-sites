@@ -4,6 +4,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.wordpress
+    networks:
+      - default
     volumes:
       - wordpress-files:/var/www/html
     environment:
@@ -86,6 +88,8 @@ services:
 
   mariadb:
     image: mariadb:11.4
+    networks:
+      - default
     volumes:
       - mariadb-data:/var/lib/mysql
     environment:
@@ -150,6 +154,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    networks:
+      - default
     command: >
       redis-server
       --maxmemory 2048mb
@@ -182,6 +188,8 @@ services:
 
   ssh:
     image: trueqap/wordpress-ssh:v2.1.1-acl
+    networks:
+      - default
     ports:
       - "2222:2222"
     volumes:
