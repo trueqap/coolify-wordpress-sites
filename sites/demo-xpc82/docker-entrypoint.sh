@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Fix ownership of /app/public for www-data
+chown -R www-data:www-data /app/public
+
 # Create wp-config.php if it doesn't exist
 if [ ! -f /app/public/wp-config.php ]; then
     cat > /app/public/wp-config.php << 'WPCONFIG'
