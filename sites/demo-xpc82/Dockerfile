@@ -22,7 +22,7 @@ RUN curl -o wordpress.tar.gz -fL "https://wordpress.org/wordpress-${WORDPRESS_VE
     && chown -R www-data:www-data /app/public
 
 # Copy Configs
-COPY Caddyfile /etc/caddy/Caddyfile
+COPY Caddyfile /etc/frankenphp/Caddyfile
 COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 
 WORKDIR /app/public
