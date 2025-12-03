@@ -57,6 +57,9 @@ $table_prefix = 'wp_';
 
 define('WP_DEBUG', false);
 
+// Filesystem - direct write without FTP
+define('FS_METHOD', 'direct');
+
 if ( ! defined( 'ABSPATH' ) ) {
     define( 'ABSPATH', __DIR__ . '/' );
 }
