@@ -1,4 +1,5 @@
 # CPX62: 16 vCPU, 32GB RAM, 640GB SSD
+# Optimalizált 2025 - WooCommerce kompatibilis
 services:
   wordpress:
     build:
@@ -16,9 +17,9 @@ services:
           define('WP_REDIS_PORT', 6379);
           define('WP_REDIS_DATABASE', 0);
           define('WP_CACHE', true);
-          define('WP_MEMORY_LIMIT', '1536M');
-          define('WP_MAX_MEMORY_LIMIT', '3072M');
-          define('DISABLE_WP_CRON', false);
+          define('WP_MEMORY_LIMIT', '512M');
+          define('WP_MAX_MEMORY_LIMIT', '1024M');
+          define('DISABLE_WP_CRON', true);
           define('WP_POST_REVISIONS', 5);
           define('AUTOSAVE_INTERVAL', 120);
           define('EMPTY_TRASH_DAYS', 14);
@@ -87,28 +88,41 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --innodb-buffer-pool-size=2G
-      - --innodb-buffer-pool-instances=1
-      - --innodb-log-file-size=256M
-      - --innodb-flush-log-at-trx-commit=0
+      # InnoDB Optimalizáció (32GB RAM)
+      - --innodb-buffer-pool-size=16G
+      - --innodb-buffer-pool-instances=8
+      - --innodb-log-file-size=1G
+      - --innodb-flush-log-at-trx-commit=2
       - --innodb-flush-method=O_DIRECT
       - --innodb-io-capacity=4000
+      - --innodb-io-capacity-max=8000
+      - --innodb-read-io-threads=8
+      - --innodb-write-io-threads=8
+      - --innodb-file-per-table=ON
+      # Kapcsolatok
+      - --max-connections=300
       - --skip-name-resolve
-      - --max-connections=500
-      - --query-cache-type=1
-      - --query-cache-size=256M
+      - --wait-timeout=600
+      - --interactive-timeout=600
+      # Temp táblák
       - --tmp-table-size=256M
       - --max-heap-table-size=256M
-      - --join-buffer-size=16M
-      - --sort-buffer-size=16M
+      # Bufferek
+      - --join-buffer-size=8M
+      - --sort-buffer-size=8M
+      - --read-buffer-size=2M
+      - --read-rnd-buffer-size=4M
+      # Slow query log
+      - --slow-query-log=ON
+      - --long-query-time=2
     deploy:
       resources:
         limits:
           cpus: '6.0'
-          memory: 16G
+          memory: 20G
         reservations:
           cpus: '3.0'
-          memory: 10G
+          memory: 18G
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -117,17 +131,24 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --maxmemory 1024mb --maxmemory-policy allkeys-lru --appendonly no --save ""
+    command: >
+      redis-server
+      --maxmemory 2048mb
+      --maxmemory-policy allkeys-lfu
+      --appendonly no
+      --save ""
+      --tcp-keepalive 300
+      --timeout 0
     volumes:
       - redis-data:/data
     deploy:
       resources:
         limits:
           cpus: '2.0'
-          memory: 1280M
+          memory: 2560M
         reservations:
           cpus: '1.0'
-          memory: 768M
+          memory: 2048M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
