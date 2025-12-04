@@ -75,7 +75,7 @@ coolify-wordpress-sites/
 
 ```bash
 # Példa: demo-cpx32 létrehozása a cpx32 szerveren
-curl -s -X POST "http://cmain.hellowp.cloud:8000/api/v1/applications/dockercompose" \
+curl -s -X POST "https://cmain.hellowp.cloud/api/v1/applications/dockercompose" \
   -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
   -H "Content-Type: application/json" \
   --data '{
