@@ -1,5 +1,5 @@
-# CPX62: 16 vCPU, 32GB RAM, 640GB SSD
-# Optimalizált 2025 - WooCommerce kompatibilis
+# CPX72: 24 vCPU, 48GB RAM, 960GB SSD
+# Optimalizált 2025 - WooCommerce kompatibilis - Trellis production alapján
 services:
   wordpress:
     build:
@@ -26,11 +26,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '6.0'
-          memory: 3G
+          cpus: '8.0'
+          memory: 4G
         reservations:
-          cpus: '3.0'
-          memory: 1536M
+          cpus: '4.0'
+          memory: 2G
     depends_on:
       mariadb:
         condition: service_healthy
@@ -40,8 +40,8 @@ services:
       test: ["CMD-SHELL", "pgrep php-fpm > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 60s
+      retries: 5
+      start_period: 30s
 
   nginx:
     build:
@@ -49,11 +49,11 @@ services:
       dockerfile: Dockerfile.nginx
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.demo-cpx62.rule=Host(`demo-cpx62.hellowp.cloud`)"
-      - "traefik.http.routers.demo-cpx62.entrypoints=https"
-      - "traefik.http.routers.demo-cpx62.tls=true"
-      - "traefik.http.routers.demo-cpx62.tls.certresolver=letsencrypt"
-      - "traefik.http.services.demo-cpx62.loadbalancer.server.port=80"
+      - "traefik.http.routers.demo-cpx72.rule=Host(`demo-cpx72.hellowp.cloud`)"
+      - "traefik.http.routers.demo-cpx72.entrypoints=https"
+      - "traefik.http.routers.demo-cpx72.tls=true"
+      - "traefik.http.routers.demo-cpx72.tls.certresolver=letsencrypt"
+      - "traefik.http.services.demo-cpx72.loadbalancer.server.port=80"
     volumes:
       - wordpress-files:/var/www/html:ro
       - nginx-cache:/var/cache/nginx
@@ -61,11 +61,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 768M
+          cpus: '3.0'
+          memory: 1G
         reservations:
-          cpus: '1.0'
-          memory: 384M
+          cpus: '1.5'
+          memory: 512M
     depends_on:
       wordpress:
         condition: service_healthy
@@ -88,41 +88,41 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      # InnoDB Optimalizáció (32GB RAM)
-      - --innodb-buffer-pool-size=16G
-      - --innodb-buffer-pool-instances=8
-      - --innodb-log-file-size=1G
+      # InnoDB Optimalizáció (48GB RAM - ~50% InnoDB-nek)
+      - --innodb-buffer-pool-size=24G
+      - --innodb-buffer-pool-instances=12
+      - --innodb-log-file-size=2G
       - --innodb-flush-log-at-trx-commit=2
       - --innodb-flush-method=O_DIRECT
-      - --innodb-io-capacity=4000
-      - --innodb-io-capacity-max=8000
-      - --innodb-read-io-threads=8
-      - --innodb-write-io-threads=8
+      - --innodb-io-capacity=6000
+      - --innodb-io-capacity-max=12000
+      - --innodb-read-io-threads=12
+      - --innodb-write-io-threads=12
       - --innodb-file-per-table=ON
       # Kapcsolatok
-      - --max-connections=300
+      - --max-connections=400
       - --skip-name-resolve
       - --wait-timeout=600
       - --interactive-timeout=600
       # Temp táblák
-      - --tmp-table-size=256M
-      - --max-heap-table-size=256M
+      - --tmp-table-size=512M
+      - --max-heap-table-size=512M
       # Bufferek
-      - --join-buffer-size=8M
-      - --sort-buffer-size=8M
-      - --read-buffer-size=2M
-      - --read-rnd-buffer-size=4M
+      - --join-buffer-size=16M
+      - --sort-buffer-size=16M
+      - --read-buffer-size=4M
+      - --read-rnd-buffer-size=8M
       # Slow query log
       - --slow-query-log=ON
       - --long-query-time=2
     deploy:
       resources:
         limits:
-          cpus: '6.0'
-          memory: 20G
+          cpus: '10.0'
+          memory: 30G
         reservations:
-          cpus: '3.0'
-          memory: 18G
+          cpus: '5.0'
+          memory: 26G
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -133,7 +133,7 @@ services:
     image: redis:7-alpine
     command: >
       redis-server
-      --maxmemory 2048mb
+      --maxmemory 3072mb
       --maxmemory-policy allkeys-lfu
       --appendonly no
       --save ""
@@ -144,11 +144,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 2560M
+          cpus: '3.0'
+          memory: 3584M
         reservations:
-          cpus: '1.0'
-          memory: 2048M
+          cpus: '1.5'
+          memory: 3072M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -185,11 +185,11 @@ services:
       - coolify
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.db-demo-cpx62.rule=Host(`db-demo-cpx62.hellowp.cloud`)"
-      - "traefik.http.routers.db-demo-cpx62.entrypoints=https"
-      - "traefik.http.routers.db-demo-cpx62.tls=true"
-      - "traefik.http.routers.db-demo-cpx62.tls.certresolver=letsencrypt"
-      - "traefik.http.services.db-demo-cpx62.loadbalancer.server.port=8080"
+      - "traefik.http.routers.db-demo-cpx72.rule=Host(`db-demo-cpx72.hellowp.cloud`)"
+      - "traefik.http.routers.db-demo-cpx72.entrypoints=https"
+      - "traefik.http.routers.db-demo-cpx72.tls=true"
+      - "traefik.http.routers.db-demo-cpx72.tls.certresolver=letsencrypt"
+      - "traefik.http.services.db-demo-cpx72.loadbalancer.server.port=8080"
     environment:
       - ADMINER_DEFAULT_SERVER=mariadb
       - ADMINER_DESIGN=nette
